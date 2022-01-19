@@ -243,7 +243,7 @@ const Elements = {
                 }
             };
             Editor.Message.addBroadcastListener('scene:change-node', panel.__nodeChanged__);
-            panel.__projectSettingChanged__ = async function (name) {
+            panel.__projectSettingChanged__ = async function(name) {
                 if (name !== 'layers') {
                     return;
                 }
@@ -588,8 +588,16 @@ const Elements = {
                     return (comp.type === sectionBody.__sections__[i].__type__) &&
                         (comp.mountedRoot === sectionBody.__sections__[i].dump?.mountedRoot);
                 });
+
+            // diy
+            console.log(panel.dump);
+            if (panel.dump.uuid.value === 'acvL4VLQ5IlYeqBO6enTpn') {
+                // TODO: diy render
+                return;
+            }
+
             // 如果元素长度、类型一致，则直接更新现有的界面
-            if (isAllSameType) {
+            { if (isAllSameType) {
                 sectionBody.__sections__.forEach(($section, index) => {
                     const dump = componentList[index];
                     $section.dump = dump;
@@ -615,8 +623,7 @@ const Elements = {
                         $panel.update(dump);
                     });
                 });
-            }
-            else {
+            } else {
                 // 如果元素不一致，说明切换了选中元素，那么需要更新整个界面
                 sectionBody.innerText = '';
                 sectionBody.__sections__ = [];
@@ -710,7 +717,7 @@ const Elements = {
                         $panel.update(component);
                     });
                 });
-            }
+            } }
             // 自定义 node 数据
             if (panel.renderMap.section && panel.renderMap.section['cc.Node']) {
                 const array = panel.$.nodeSection.__node_panels__ = panel.$.nodeSection.__node_panels__ || [];
