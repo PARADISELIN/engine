@@ -3,6 +3,13 @@ const fs = require("fs");
 const path = require("path");
 const utils = require("./utils");
 
+function log(line, ...content) {
+    const style = 'color:rgb(53,148,105);font-size:16px;font-weight:bold;';
+    let prefix = `%ceditor/inspector/contributions/node.js -- line: ${line}`;
+
+    console.log(prefix, style, ...content);
+}
+
 exports.listeners = {
     async 'change-dump'(event) {
         const panel = this;
@@ -136,11 +143,13 @@ exports.template = `
         </ui-button>
     </section>
 
+    <!-- panel layout: header -->
     <header class="header">
         <ui-checkbox class="active"></ui-checkbox>
         <ui-input class="name"></ui-input>
     </header>
 
+    <!-- panel component: scene -->
     <section class="component scene">
         <ui-prop class="release" type="dump"></ui-prop>
         <ui-prop class="ambient" type="dump"></ui-prop>
@@ -150,6 +159,7 @@ exports.template = `
         <ui-prop class="shadows" type="dump"></ui-prop>
     </section>
 
+    <!-- panel component: node -->
     <ui-section class="component node" expand>
         <header class="component-header" slot="header">
             <span class="name">Node</span>
@@ -172,17 +182,26 @@ exports.template = `
         <div class="node-section"></div>
     </ui-section>
 
+    <!-- panel section header -->
     <section class="section-header"></section>
+
+    <!-- panel section body: render component -->
     <section class="section-body"></section>
+
+    <!-- panel section footer -->
     <section class="section-footer"></section>
+
+    <!-- panel section missing -->
     <section class="section-missing"></section>
 
+    <!-- panel layout: footer -->
     <footer class="footer">
         <ui-button>
             <ui-label value="i18n:inspector.add_component"></ui-label>
         </ui-button>
     </footer>
 
+    <!-- panel section assets -->
     <section class="section-asset"></section>
 </ui-drag-area>
 `;
@@ -308,8 +327,7 @@ const Elements = {
                 dumps = await Promise.all(panel.uuidList.map((uuid) => {
                     return Editor.Message.request('scene', 'query-node', uuid);
                 }));
-            }
-            catch (err) {
+            } catch (err) {
                 console.error(err);
             }
             dumps = dumps.filter(Boolean);
@@ -317,6 +335,7 @@ const Elements = {
             panel.dumps = [];
             panel.uuidList = [];
             panel.assets = {};
+
             if (panel.dump) {
                 panel.$.container.style.display = 'flex';
                 panel.$.header.style.display = 'flex';
@@ -331,13 +350,11 @@ const Elements = {
                 });
                 // 补充缺失的 dump 数据，如 path values 等，收集节点内的资源
                 utils.translationDump(panel.dump, panel.dumps.length > 1 ? panel.dumps : undefined, panel.assets);
-            }
-            else {
+            } else {
                 panel.$.container.style.display = 'none';
             }
         },
         close() {
-
             const panel = this;
             Editor.Message.removeBroadcastListener('scene:change-node', panel.__nodeChanged__);
             Editor.Message.removeBroadcastListener('project:setting-change', panel.__projectSettingChanged__);
@@ -564,22 +581,29 @@ const Elements = {
             if (!panel.dump || panel.dump.isScene) {
                 return;
             }
+
+            log(585, panel.dump);
+
             panel.$this.setAttribute('sub-type', 'node');
             panel.$.container.setAttribute('droppable', 'cc.Script');
             panel.$.nodePosition.render(panel.dump.position);
             panel.$.nodeRotation.render(panel.dump.rotation);
             panel.$.nodeScale.render(panel.dump.scale);
             panel.$.nodeLayer.render(panel.dump.layer);
+
             // 查找需要渲染的 component 列表
             const componentList = [];
             for (let i = 0; i < panel.dump.__comps__.length; i++) {
                 const comp = panel.dump.__comps__[i];
+
+                // multiple selection case
                 if (panel.dumps.every((dump) => {
                     return dump.__comps__[i] && dump.__comps__[i].type === comp.type;
                 })) {
                     componentList.push(comp);
                 }
             }
+
             const sectionBody = panel.$.sectionBody;
             const isNotEmpty = componentList.length && sectionBody.__sections__ && sectionBody.__sections__.length;
             const isSameLength = isNotEmpty && sectionBody.__sections__.length === componentList.length;
@@ -589,15 +613,12 @@ const Elements = {
                         (comp.mountedRoot === sectionBody.__sections__[i].dump?.mountedRoot);
                 });
 
-            // diy
-            console.log(panel.dump);
-            if (panel.dump.uuid.value === 'acvL4VLQ5IlYeqBO6enTpn') {
-                // TODO: diy render
-                return;
-            }
+            // TODO: manual render component
+            log(617, !!isAllSameType);
+            log(618, sectionBody);
 
             // 如果元素长度、类型一致，则直接更新现有的界面
-            { if (isAllSameType) {
+            if (isAllSameType) {
                 sectionBody.__sections__.forEach(($section, index) => {
                     const dump = componentList[index];
                     $section.dump = dump;
@@ -607,8 +628,7 @@ const Elements = {
                     $active.value = dump.value.enabled.value;
                     if ($active.dump.values && $active.dump.values.some((ds) => ds !== $active.dump.value)) {
                         $active.invalid = true;
-                    }
-                    else {
+                    } else {
                         $active.invalid = false;
                     }
                     const url = panel.getHelpUrl(dump.editor);
@@ -717,7 +737,7 @@ const Elements = {
                         $panel.update(component);
                     });
                 });
-            } }
+            }
             // 自定义 node 数据
             if (panel.renderMap.section && panel.renderMap.section['cc.Node']) {
                 const array = panel.$.nodeSection.__node_panels__ = panel.$.nodeSection.__node_panels__ || [];
@@ -917,9 +937,7 @@ const Elements = {
                 const next = await materialPanel.panel.beforeClose.call(materialPanel.panelObject);
                 if (next === false) {
                     return false;
-                }
-                else {
-
+                } else {
                     materialPanel.remove();
                 }
             }
