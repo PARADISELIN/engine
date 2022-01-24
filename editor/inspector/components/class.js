@@ -27,7 +27,6 @@
  */
 
 /**
- * @global
  * @typedef {Object} ComponentDump
  * @property {string} cid
  * @property {Editor} editor

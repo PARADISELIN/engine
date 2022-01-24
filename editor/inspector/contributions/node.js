@@ -119,6 +119,7 @@ exports.listeners = {
         }
     },
 };
+
 exports.template = `
 <ui-drag-area class="container">
     <section class="prefab" hidden missing>
@@ -203,7 +204,9 @@ exports.template = `
     <section class="section-asset"></section>
 </ui-drag-area>
 `;
+
 exports.style = fs.readFileSync(path.join(__dirname, './node.css'), 'utf8');
+
 exports.$ = {
     container: '.container',
     prefab: '.prefab',
@@ -241,6 +244,7 @@ exports.$ = {
     footer: '.footer',
     componentAdd: '.footer > ui-button',
 };
+
 const Elements = {
     panel: {
         ready() {
@@ -978,10 +982,11 @@ const Elements = {
         },
     },
 };
+
 exports.methods = {
     /**
      * 获取组件帮助菜单的 url
-     * @param editor
+     * @param {import('../components/class').Editor} editor
      */
     getHelpUrl(editor) {
         if (!editor || !editor.help) {
@@ -1012,7 +1017,7 @@ exports.methods = {
      */
     componentContextMenu(uuidList, dump, total, index, nodeDumps) {
         // 是否多选节点
-        const isMultiple = uuidList.length > 1 ? true : false;
+        const isMultiple = uuidList.length > 1;
         const uuid = uuidList[0];
         // const total = vm.total;
         // const index = vm.index;
@@ -1295,6 +1300,7 @@ exports.methods = {
         });
     },
 };
+
 async function update(uuidList, renderMap, typeManager, renderManager) {
     const panel = this;
     panel.uuidList = uuidList || [];
