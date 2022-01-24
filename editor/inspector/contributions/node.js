@@ -55,7 +55,7 @@ exports.listeners = {
                     return;
                 }
                 else {
-                    setChildrenLayer = choose === 0 ? true : false;
+                    setChildrenLayer = choose === 0;
                 }
             }
         }
@@ -86,8 +86,7 @@ exports.listeners = {
                     },
                 });
             }
-        }
-        catch (error) {
+        } catch (error) {
             console.error(error);
         }
     },
@@ -115,8 +114,7 @@ exports.listeners = {
                     path: dump.path,
                 });
             }
-        }
-        catch (error) {
+        } catch (error) {
             console.error(error);
         }
     },
@@ -631,23 +629,18 @@ const Elements = {
                         (comp.mountedRoot === sectionBody.__sections__[i].dump?.mountedRoot);
                 });
 
-            // TODO: manual render component
-
-            // 如果元素长度、类型一致，则直接更新现有的界面
+            // if the element length and type are the same, directly update the existing interface
             if (isAllSameType) {
                 sectionBody.__sections__.forEach(($section, index) => {
                     const dump = componentList[index];
                     $section.dump = dump;
                     // 处理 ui-checkbox 涉及多选的情况
-                    // QUESTION: multiple selection ?
+                    // QUESTION: what does the comment on the line above mean?
                     const $active = $section.querySelector('ui-checkbox');
                     $active.dump = dump.value.enabled;
                     $active.value = dump.value.enabled.value;
-                    if ($active.dump.values && $active.dump.values.some((ds) => ds !== $active.dump.value)) {
-                        $active.invalid = true;
-                    } else {
-                        $active.invalid = false;
-                    }
+                    // QUESTION: what is `dump.values`???
+                    $active.invalid = !!($active.dump.values && $active.dump.values.some((ds) => ds !== $active.dump.value));
 
                     const url = panel.getHelpUrl(dump.editor);
                     const $link = $section.querySelector('ui-link');
@@ -657,13 +650,13 @@ const Elements = {
                         $link.removeAttribute('value');
                     }
 
+                    // call auto render
                     Array.prototype.forEach.call($section.__panels__, ($panel) => {
-                        // QUESTION: update blackbox?
                         $panel.update(dump);
                     });
                 });
             } else {
-                // 如果元素不一致，说明切换了选中元素，那么需要更新整个界面
+                // repaint whole interface
                 sectionBody.innerText = '';
                 sectionBody.__sections__ = [];
 
@@ -691,6 +684,7 @@ const Elements = {
                     $section.dump = component;
                     $section.__panels__ = [];
                     $section.__type__ = component.type;
+
                     const $active = $section.querySelector('ui-checkbox');
                     $active.value = component.value.enabled.value;
                     $active.dump = component.value.enabled;
@@ -699,7 +693,7 @@ const Elements = {
                         const value = !!$active.value;
                         const dump = $active.dump;
                         dump.value = value;
-                        // QUESTION: what `values` means ?
+                        // QUESTION: what is `values` mean???
                         if ('values' in dump) {
                             dump.values.forEach((val, index) => {
                                 dump.values[index] = value;
@@ -708,7 +702,7 @@ const Elements = {
                         $active.dispatch('change-dump');
                     });
 
-                    // `link` and `menu` set
+                    // `link` set
                     const $link = $section.querySelector('.link');
                     const url = panel.getHelpUrl(component.editor);
                     if (url) {
@@ -717,6 +711,8 @@ const Elements = {
                             event.stopPropagation();
                         });
                     }
+
+                    // `menu` set
                     const $menu = $section.querySelector('.menu');
                     $menu.addEventListener('click', (event) => {
                         event.stopPropagation();
@@ -729,6 +725,8 @@ const Elements = {
 
                     // `renderList` is a list of render template file
                     let renderList = panel.renderMap.section[$section.__type__];
+
+                    // if no `render template`, use the default `cc.Class` template
                     if (!renderList || !renderList.length) {
                         if (Array.isArray(component.extends)) {
                             const parentClass = component.extends[0];
@@ -751,6 +749,7 @@ const Elements = {
                         `);
 
                         $panel.shadowRoot.addEventListener('change-dump', (event) => {
+                            log(753, 'change-dump event called');
                             exports.listeners['change-dump'].call(panel, event);
                         });
 
@@ -761,6 +760,7 @@ const Elements = {
                         $panel.shadowRoot.addEventListener('reset-dump', (event) => {
                             exports.listeners['reset-dump'].call(panel, event);
                         });
+
                         $section.appendChild($panel);
                         $section.__panels__.push($panel);
                         $panel.dump = component;
@@ -772,6 +772,7 @@ const Elements = {
             // QUESTION: custom node data?
             if (panel.renderMap.section && panel.renderMap.section['cc.Node']) {
                 const array = panel.$.nodeSection.__node_panels__ = panel.$.nodeSection.__node_panels__ || [];
+
                 panel.renderMap.section['cc.Node'].forEach((file, index) => {
                     if (!array[index]) {
                         array[index] = document.createElement('ui-panel');
@@ -780,9 +781,11 @@ const Elements = {
                     array[index].setAttribute('src', file);
                     array[index].update(panel.dump);
                 });
+
                 for (let i = panel.renderMap.section['cc.Node'].length; i < array.length; i++) {
                     array[i].remove();
                 }
+
                 array.length = panel.renderMap.section['cc.Node'].length;
             } else if (panel.$.nodeSection.__node_panels__) {
                 panel.$.nodeSection.__node_panels__.forEach((dom) => {
@@ -1305,7 +1308,7 @@ async function update(uuidList, renderMap, typeManager, renderManager) {
         }
     }
 }
-exports.update = update;
+
 async function ready() {
     const panel = this;
     // 为了避免把 ui-num-input, ui-color 的连续 change 进行 snapshot
@@ -1317,7 +1320,7 @@ async function ready() {
         }
     }
 }
-exports.ready = ready;
+
 async function close() {
     const panel = this;
     for (const prop in Elements) {
@@ -1327,7 +1330,7 @@ async function close() {
         }
     }
 }
-exports.close = close;
+
 async function beforeClose() {
     const panel = this;
     for (const prop in Elements) {
@@ -1341,8 +1344,11 @@ async function beforeClose() {
     }
     return true;
 }
-exports.beforeClose = beforeClose;
 
+exports.update = update;
+exports.ready = ready;
+exports.close = close;
+exports.beforeClose = beforeClose;
 exports.config = {
     section: require('../components.js'),
 };
