@@ -1,7 +1,7 @@
 'use strict';
-const fs = require("fs");
-const path = require("path");
-const utils = require("./utils");
+const fs = require('fs');
+const path = require('path');
+const utils = require('./utils');
 
 function log(line, ...content) {
     const style = 'color:rgb(53,148,105);font-size:16px;font-weight:bold;';
@@ -331,16 +331,21 @@ const Elements = {
                 console.error(err);
             }
             dumps = dumps.filter(Boolean);
+
+            // initialize panel data
             panel.dump = dumps[0];
             panel.dumps = [];
             panel.uuidList = [];
             panel.assets = {};
 
             if (panel.dump) {
+                // set container style
                 panel.$.container.style.display = 'flex';
                 panel.$.header.style.display = 'flex';
                 panel.$.footer.style.display = 'block';
-                // 以第一个节点的类型，过滤多选的其他不同类型，比如 node 和 sceneNode 就不能混为多选编辑
+
+                // use the first node type as the base type
+                // for example, node and sceneNode cannot be edited for multiple selections
                 const type = panel.dump.__type__;
                 dumps.forEach((dump) => {
                     if (dump.__type__ === type) {
@@ -348,7 +353,7 @@ const Elements = {
                         panel.dumps.push(dump);
                     }
                 });
-                // 补充缺失的 dump 数据，如 path values 等，收集节点内的资源
+                // complement missing data, collect resources within a node
                 utils.translationDump(panel.dump, panel.dumps.length > 1 ? panel.dumps : undefined, panel.assets);
             } else {
                 panel.$.container.style.display = 'none';
@@ -582,21 +587,29 @@ const Elements = {
                 return;
             }
 
-            log(585, panel.dump);
-
+            // `panel.$this` is whole inspector panel
+            // `panel.$this` dom structure like: <ui-panel class="content" src="D:\workspace\engine\editor\inspector\contributions\node.js" type="node" sub-type="node"></ui-panel>
             panel.$this.setAttribute('sub-type', 'node');
             panel.$.container.setAttribute('droppable', 'cc.Script');
+
+            // node properties(position, rotation, scale, layer) render
+            // `render` method is provided by engine, so it's a blackbox
+            // TODO: can be encapsulated [renderNodePhysicalProperties]
             panel.$.nodePosition.render(panel.dump.position);
             panel.$.nodeRotation.render(panel.dump.rotation);
             panel.$.nodeScale.render(panel.dump.scale);
             panel.$.nodeLayer.render(panel.dump.layer);
 
-            // 查找需要渲染的 component 列表
+            // find a list of components that need to be rendered
+            // TODO: can be encapsulated [extractValidComponents]
             const componentList = [];
             for (let i = 0; i < panel.dump.__comps__.length; i++) {
                 const comp = panel.dump.__comps__[i];
 
-                // multiple selection case
+                // multiple selection case:
+                // if the number of selected nodes is greater than 1,
+                // we need to ensure that
+                // the component type of all nodes is the same as the type of `comp`
                 if (panel.dumps.every((dump) => {
                     return dump.__comps__[i] && dump.__comps__[i].type === comp.type;
                 })) {
@@ -604,18 +617,21 @@ const Elements = {
                 }
             }
 
+            // `sectionBody` is used to render various components that wrapped with `ui-section`
             const sectionBody = panel.$.sectionBody;
-            const isNotEmpty = componentList.length && sectionBody.__sections__ && sectionBody.__sections__.length;
+            // `sectionBody.__sections__` is the collection of `ui-section` component
+            const isNotEmpty = componentList.length !== 0 && (sectionBody.__sections__ && sectionBody.__sections__.length !== 0);
+            // is `__sections__.length` equal to `componentList.length`
             const isSameLength = isNotEmpty && sectionBody.__sections__.length === componentList.length;
+            // is every `ui-section` type same as the component type
             const isAllSameType = isSameLength &&
                 componentList.every((comp, i) => {
+                    // QUESTION: what is `mountedRoot` property means? cannot found in `comp` or `__sections__[i].dump`
                     return (comp.type === sectionBody.__sections__[i].__type__) &&
                         (comp.mountedRoot === sectionBody.__sections__[i].dump?.mountedRoot);
                 });
 
             // TODO: manual render component
-            log(617, !!isAllSameType);
-            log(618, sectionBody);
 
             // 如果元素长度、类型一致，则直接更新现有的界面
             if (isAllSameType) {
@@ -623,6 +639,7 @@ const Elements = {
                     const dump = componentList[index];
                     $section.dump = dump;
                     // 处理 ui-checkbox 涉及多选的情况
+                    // QUESTION: multiple selection ?
                     const $active = $section.querySelector('ui-checkbox');
                     $active.dump = dump.value.enabled;
                     $active.value = dump.value.enabled.value;
@@ -631,15 +648,17 @@ const Elements = {
                     } else {
                         $active.invalid = false;
                     }
+
                     const url = panel.getHelpUrl(dump.editor);
                     const $link = $section.querySelector('ui-link');
                     if (url) {
                         $link.setAttribute('value', url);
-                    }
-                    else {
+                    } else {
                         $link.removeAttribute('value');
                     }
+
                     Array.prototype.forEach.call($section.__panels__, ($panel) => {
+                        // QUESTION: update blackbox?
                         $panel.update(dump);
                     });
                 });
@@ -647,11 +666,16 @@ const Elements = {
                 // 如果元素不一致，说明切换了选中元素，那么需要更新整个界面
                 sectionBody.innerText = '';
                 sectionBody.__sections__ = [];
+
                 componentList.forEach((component, i) => {
                     const $section = document.createElement('ui-section');
+
+                    // attribute set
                     $section.setAttribute('expand', '');
                     $section.setAttribute('class', 'component');
                     $section.setAttribute('cache-expand', `${component.path}:${component.type}`);
+
+                    // header render
                     $section.innerHTML = `
                     <header class="component-header" slot="header">
                         <ui-checkbox class="active"></ui-checkbox>
@@ -662,6 +686,8 @@ const Elements = {
                         </ui-link>
                     </header>
                     `;
+
+                    // extra data set
                     $section.dump = component;
                     $section.__panels__ = [];
                     $section.__type__ = component.type;
@@ -673,6 +699,7 @@ const Elements = {
                         const value = !!$active.value;
                         const dump = $active.dump;
                         dump.value = value;
+                        // QUESTION: what `values` means ?
                         if ('values' in dump) {
                             dump.values.forEach((val, index) => {
                                 dump.values[index] = value;
@@ -680,6 +707,8 @@ const Elements = {
                         }
                         $active.dispatch('change-dump');
                     });
+
+                    // `link` and `menu` set
                     const $link = $section.querySelector('.link');
                     const url = panel.getHelpUrl(component.editor);
                     if (url) {
@@ -693,13 +722,14 @@ const Elements = {
                         event.stopPropagation();
                         exports.methods.componentContextMenu(panel.uuidList, $section.dump, componentList.length, i, panel.dumps);
                     });
+
+                    // append to `sectionBody`
                     sectionBody.__sections__[i] = $section;
                     sectionBody.appendChild($section);
-                    // 再处理内部
+
+                    // `renderList` is a list of render template file
                     let renderList = panel.renderMap.section[$section.__type__];
-                    // 如果都没有渲染模板，使用默认 cc.Class 模板
                     if (!renderList || !renderList.length) {
-                        // 判断继承
                         if (Array.isArray(component.extends)) {
                             const parentClass = component.extends[0];
                             renderList = panel.renderMap.section[parentClass];
@@ -739,6 +769,7 @@ const Elements = {
                 });
             }
             // 自定义 node 数据
+            // QUESTION: custom node data?
             if (panel.renderMap.section && panel.renderMap.section['cc.Node']) {
                 const array = panel.$.nodeSection.__node_panels__ = panel.$.nodeSection.__node_panels__ || [];
                 panel.renderMap.section['cc.Node'].forEach((file, index) => {
@@ -753,8 +784,7 @@ const Elements = {
                     array[i].remove();
                 }
                 array.length = panel.renderMap.section['cc.Node'].length;
-            }
-            else if (panel.$.nodeSection.__node_panels__) {
+            } else if (panel.$.nodeSection.__node_panels__) {
                 panel.$.nodeSection.__node_panels__.forEach((dom) => {
                     dom.remove();
                 });

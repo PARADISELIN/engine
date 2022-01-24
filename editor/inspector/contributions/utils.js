@@ -128,6 +128,7 @@ function translationDump(dump, dumps, assets) {
     dump.rotation.path = 'rotation';
     dump.scale.path = 'scale';
     dump.layer.path = 'layer';
+
     if (dumps) {
         dump.active.values = dumps.map((dump) => dump.active.value);
         dump.name.values = dumps.map((dump) => dump.name.value);
@@ -136,6 +137,7 @@ function translationDump(dump, dumps, assets) {
         dump.scale.values = dumps.map((dump) => dump.scale.value);
         dump.layer.values = dumps.map((dump) => dump.layer.value);
     }
+
     for (let i = 0; i < dump.__comps__.length; i++) {
         const component = dump.__comps__[i];
         component.path = `__comps__.${i}`;
@@ -143,14 +145,15 @@ function translationDump(dump, dumps, assets) {
         if (allow) {
             collectGroups(component);
             translate(component.value, component.path, dumps ? dumps.map((dump) => dump.__comps__[i].value) : undefined, assets);
-        }
-        else {
+        } else {
             break;
         }
     }
+
     return dump;
 }
 exports.translationDump = translationDump;
+
 function translationSceneDump(dump, dumps, assets) {
     dump.autoReleaseAssets.path = 'autoReleaseAssets';
     Object.keys(dump._globals).forEach((key) => {
