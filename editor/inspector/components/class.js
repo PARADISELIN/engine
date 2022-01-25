@@ -37,7 +37,9 @@
  * @property {string} type
  * @property {{[x: string]: ValueItem}} value
  * @property {boolean} visible
- * @property values
+ * @property {string} [displayName]
+ * @property {number} [displayOrder]
+ * @property {Array} [values]
  */
 
 function log(line, ...content) {
@@ -50,9 +52,11 @@ function log(line, ...content) {
 exports.template = `
 <section></section>
 `;
+
 exports.$ = {
     section: 'section',
 };
+
 exports.style = `
     .tab-group {
         margin-top: 10px;
@@ -68,33 +72,39 @@ exports.style = `
         border-bottom-right-radius: calc(var(--size-normal-radius) * 1px);
     }
 `;
+
 exports.methods = {
     createTabGroup(dump) {
         const $group = document.createElement('div');
+        const $header = document.createElement('ui-tab');
+
+        $header.setAttribute('class', 'tab-header');
+
         $group.setAttribute('class', 'tab-group');
         $group.dump = dump;
         $group.tabs = {};
-        $group.$header = document.createElement('ui-tab');
-        $group.$header.setAttribute('class', 'tab-header');
+        $group.$header = $header;
         $group.appendChild($group.$header);
 
-        $group.$header.addEventListener('change', (e) => {
+        $header.addEventListener('change', (e) => {
             const tabNames = Object.keys($group.tabs);
             const tabName = tabNames[e.target.value || 0];
-            $group.querySelectorAll('.tab-content').forEach((child) => {
-                if (child.getAttribute('name') === tabName) {
-                    child.style.display = 'block';
-                } else {
-                    child.style.display = 'none';
-                }
+            const $contents = $group.querySelectorAll('.tab-content');
+
+            $contents.forEach(($content) => {
+                $content.style.display = $content.getAttribute('name') === tabName
+                    ? 'block'
+                    : 'none';
             });
         });
+
         setTimeout(() => {
             const $firstTab = $group.$header.shadowRoot.querySelector('ui-button');
             if ($firstTab) {
                 $firstTab.dispatch('confirm');
             }
         });
+
         return $group;
     },
 
@@ -102,6 +112,7 @@ exports.methods = {
         if ($group.tabs[tabName]) {
             return;
         }
+
         const $content = document.createElement('div');
         $group.tabs[tabName] = $content;
         $content.setAttribute('class', 'tab-content');
@@ -131,12 +142,35 @@ exports.methods = {
         }
     },
 };
+
+/**
+ * get property id
+ * @param {string} type
+ * @param {string} name
+ * @param {string} path
+ * @return {string}
+ */
+exports.methods.getPropId = function(type, name, path) {
+    return `${type || name}:${path}`;
+};
+
+/**
+ * compare func
+ * @param {ComponentDump} a
+ * @param {ComponentDump} b
+ */
+exports.methods.displayOrderCompare = function(a, b) {
+    const aDisplayOrder = a.displayOrder === undefined ? Infinity : a.displayOrder;
+    const bDisplayOrder = b.displayOrder === undefined ? Infinity : b.displayOrder;
+    const res = aDisplayOrder - bDisplayOrder;
+    return Number.isNaN(res) ? 0 : res;
+};
+
 /**
  * 自动渲染组件的方法
  * @param {ComponentDump} dump
  */
 async function update(dump) {
-    log(137, dump);
     const $panel = this;
     const $section = $panel.$.section;
     const oldPropList = Object.keys($panel.$propList);
@@ -150,6 +184,7 @@ async function update(dump) {
             continue;
         }
 
+        // QUESTION: what is `dump.values`? what case
         // `dump.values` reconstruct
         if (dump.values) {
             info.values = dump.values.map((value) => {
@@ -172,7 +207,6 @@ async function update(dump) {
                 const key = info.group.id || 'default';
                 const name = info.group.name;
 
-                // create group
                 if (!$panel.$groups[key] && dump.groups[key]) {
                     if (dump.groups[key].style === 'tab') {
                         $panel.$groups[key] = $panel.createTabGroup(dump.groups[key]);
@@ -196,12 +230,68 @@ async function update(dump) {
         $prop.render(info);
     }
 
+    // if `id` is not existed in `newPropList`
+    // remove it from parentElement
     for (const id of oldPropList) {
         if (!newPropList.includes(id)) {
             const $prop = $panel.$propList[id];
             if ($prop && $prop.parentElement) {
                 $prop.parentElement.removeChild($prop);
             }
+        }
+    }
+}
+
+/**
+ * update
+ * @param {ComponentDump} dump
+ * @return {Promise<void>}
+ */
+async function update1(dump) {
+    const $panel = this;
+    const $section = $panel.$.section;
+
+    const oldPropList = Object.keys($panel.$propList);
+    const newPropList = [];
+
+    const { value } = dump;
+    const visiblePropList = Reflect.ownKeys(value)
+        .filter(key => value[key].visible)
+        .map(key => value[key])
+        .sort($panel.displayOrderCompare);
+
+    for (const prop of visiblePropList) {
+        // QUESTION: what is `dump.values`? what case
+        // `dump.values` reconstruct
+        // if (dump.values) {
+        //     prop.values = dump.values.map((value) => {
+        //         return value[key].value;
+        //     });
+        // }
+
+        const { type, name, path } = prop;
+        const propId = $panel.getPropId(type, name, path);
+
+        newPropList.push(propId);
+
+        let $prop = $panel.$propList[propId];
+
+        if (!$prop) {
+            $prop = document.createElement('ui-prop');
+            $prop.setAttribute('type', 'dump');
+            $prop.setAttribute('dump', prop.type);
+            if (prop.readonly) {
+                $prop.setAttribute('readonly', String(prop.readonly));
+            }
+            $panel.$propList[propId] = $prop;
+
+            if (prop.group && dump.groups) {
+                // append groups to panel
+                // renderGroups()
+            }
+
+        } else {
+            // TODO: update
         }
     }
 }
