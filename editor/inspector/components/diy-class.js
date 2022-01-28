@@ -1,8 +1,10 @@
 'use strict';
 
 // TODO: carding update process
-// TODO: notice data maintain
+// TODO: data maintain($propList, $groups)
 // TODO: enum prop render use `ui-select`
+// TODO: `cc.Color` prop render use `ui-color`
+// TODO: setting prop render like lightmapSettings(cc.Object)
 // TODO: pass node uuid in
 // TODO: event handler
 
@@ -34,6 +36,7 @@ const { createPropElement } = require('./prop-renderer');
  * @property {number} [step]
  * @property {boolean} [slide]
  * @property {boolean} [isArray]
+ * @property {{name: string, value: any}} [enumList] - enum property symbol
  * @property {any} [elementTypeData]
  */
 
@@ -230,10 +233,13 @@ async function update(dump) {
 
         // TODO: render core
         if (!$prop) {
-            $prop = createPropElement($panel, prop);
+            $prop = createPropElement($panel, propId, prop);
             $section.appendChild($prop);
         } else {
-            // update
+            if (!$prop.isConnected || !$prop.parentElement) {
+                // TODO:
+                // update: find the nearest sibling node, then insert $prop by `index`
+            }
         }
 
         // if `id` is not existed in `newPropList`

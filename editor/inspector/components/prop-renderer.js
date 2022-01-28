@@ -17,7 +17,8 @@
  * @property {number} [min]
  * @property {number} [step]
  * @property {boolean} [slide]
- * @property {boolean} [isArray]
+ * @property {boolean} [isArray] - array property symbol
+ * @property {{name: string, value: any}} [enumList] - enum property symbol
  * @property {any} [elementTypeData]
  */
 
@@ -157,6 +158,34 @@ function createBooleanProp(prop) {
 
     $content.setAttribute('default', prop.default);
     $content.setAttribute('value', prop.value);
+
+    $prop.appendChild($label);
+    $prop.appendChild($content);
+
+    return $prop;
+}
+
+/**
+ * create enum prop
+ * @param {PropDump | PropDump[][]} prop
+ * @return {HTMLElement}
+ */
+function createEnumProp(prop) {
+    const $prop = createPropContainer(prop);
+    const $label = createLabelElement(prop);
+    const $content = createContentElement('ui-select', prop);
+
+    $content.setAttribute('value', prop.default);
+
+    const { enumList } = prop;
+
+    for (let i = 0; i < enumList.length; i++) {
+        const item = enumList[i];
+        const $option = document.createElement('option');
+        $option.setAttribute('value', item.value);
+        $option.textContent = item.name;
+        $content.appendChild($option);
+    }
 
     $prop.appendChild($label);
     $prop.appendChild($content);
@@ -395,7 +424,15 @@ function createByType(prop) {
         case 'cc.Label':
         case 'cc.Sprite':
         case 'cc.Node':
+        case 'cc.Material':
+        case 'cc.Mesh':
             return createNodeProp(prop);
+        // TODO: reg, value judgement
+        // case 'cc.ModelLightmapSettings':
+        // case 'cc.Object':
+        //     return createObjectProp(prop);
+        case 'Enum':
+            return createEnumProp(prop);
         case 'String':
             return createStringProp(prop);
         case 'Number':
@@ -413,10 +450,11 @@ function createByType(prop) {
 /**
  * create property element by dump
  * @param {HTMLElement & {$propList: { [x: string]: HTMLElement }, $groups: { [x: string]: HTMLElement }}} $panel
+ * @param {string} propId
  * @param {PropDump | PropDump[][]} prop
  * @return {HTMLElement}
  */
-function createPropElement($panel, prop) {
+function createPropElement($panel, propId, prop) {
     if (Array.isArray(prop)) {
         return createPropGroup($panel, prop);
     }
@@ -429,8 +467,7 @@ function createPropElement($panel, prop) {
         $prop = createByType(prop);
     }
 
-    const id = `${prop.type || prop.name}:${prop.path}`;
-    $panel.$propList[id] = $prop;
+    $panel.$propList[propId] = $prop;
 
     return $prop;
 }

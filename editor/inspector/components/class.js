@@ -165,6 +165,7 @@ exports.methods = {
  * @param {ComponentDump} dump
  */
 async function update(dump) {
+    log(168, dump);
     const $panel = this;
     const $section = $panel.$.section;
     const oldPropList = Object.keys($panel.$propList);
@@ -220,9 +221,10 @@ async function update(dump) {
                 $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
             }
         } else {
-            log(223, 'update');
+            log(224, 'update');
             if (!$prop.isConnected || !$prop.parentElement) {
-                log(225, `$prop is not connected or $prop has no parentElement`, $prop.isConnected, $prop.parentElement);
+                // case: updating an existing but deleted property
+                log(227, `$prop is not connected or $prop has no parentElement`, $prop.isConnected, $prop.parentElement);
                 $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
             }
         }
@@ -230,7 +232,8 @@ async function update(dump) {
     }
 
     // if `id` is not existed in `newPropList`
-    // remove it from parentElement
+    // remove it from `parentElement`
+    // case: remove an existing property in a custom script
     for (const id of oldPropList) {
         if (!newPropList.includes(id)) {
             log(263, `propId: ${id} is not existed in newPropList`);
