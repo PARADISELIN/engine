@@ -5,7 +5,7 @@ const utils = require('./utils');
 
 function log(line, ...content) {
     const style = 'color:rgb(53,148,105);font-size:16px;font-weight:bold;';
-    let prefix = `%ceditor/inspector/contributions/node.js -- line: ${line}`;
+    let prefix = `%c node.js -- line: ${line}`;
 
     console.log(prefix, style, ...content);
 }
@@ -53,8 +53,7 @@ exports.listeners = {
                 if (choose === 2) {
                     Elements.layer.update.call(panel);
                     return;
-                }
-                else {
+                } else {
                     setChildrenLayer = choose === 0;
                 }
             }
@@ -64,9 +63,11 @@ exports.listeners = {
                 const uuid = panel.uuidList[i];
                 const { path, type, isArray } = dump;
                 let value = dump.value;
+
                 if (dump.values) {
                     value = dump.values[i];
                 }
+
                 if (setChildrenLayer) {
                     Editor.Message.send('scene', 'set-node-and-children-layer', {
                         uuid,
@@ -618,6 +619,8 @@ const Elements = {
                     componentList.push(comp);
                 }
             }
+
+            log(622, componentList);
 
             // `sectionBody` is used to render various components that wrapped with `ui-section`
             const sectionBody = panel.$.sectionBody;

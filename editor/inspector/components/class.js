@@ -1,21 +1,32 @@
 'use strict';
 
 /**
- * @typedef {Object} ValueItem
- * @property {any} default
- * @property {string[]} extends
- * @property {string} name
- * @property {string} path
- * @property {boolean} readonly
- * @property {string} type
- * @property {any} value
- * @property {boolean} visible
- */
-
-/**
  * @typedef {Object} GroupItem
  * @property {number} displayOrder
  * @property {string} style
+ */
+
+/**
+ * @typedef {Object} PropDump
+ * @property {string} name - property name
+ * @property {string} type - property type
+ * @property {string} path - property find path
+ * @property {any} default - property default value
+ * @property {any} value - property current value
+ * @property {string[]} extends - property extends
+ * @property {boolean} readonly - is property readonly
+ * @property {boolean} visible - is property visible
+ * @property {Group} [group] - which group belong to
+ * @property {string} displayName
+ * @property {string} tooltip
+ * @property {number} [displayOrder]
+ * @property {boolean} [animatable]
+ * @property {number} [max]
+ * @property {number} [min]
+ * @property {number} [step]
+ * @property {boolean} [slide]
+ * @property {boolean} [isArray]
+ * @property {any} [elementTypeData]
  */
 
 /**
@@ -23,31 +34,36 @@
  * @property {string} inspector
  * @property {string} icon
  * @property {string} help
- * @property {string} _showTick
+ * @property {boolean} _showTick
  */
 
 /**
  * @typedef {Object} ComponentDump
- * @property {string} cid
+ * @property {string} cid - component id
  * @property {Editor} editor
  * @property {string[]} extends
  * @property {{[x: string]: GroupItem}} groups
  * @property {string} path
  * @property {boolean} readonly
  * @property {string} type
- * @property {{[x: string]: ValueItem}} value
+ * @property {{[x: string]: PropDump}} value
  * @property {boolean} visible
- * @property {string} [displayName]
- * @property {number} [displayOrder]
- * @property {Array} [values]
+ * @property {any[]} [values]
+ */
+
+/**
+ * @typedef {Object} Group
+ * @property {string} name
+ * @property {string} id
  */
 
 function log(line, ...content) {
     const style = 'color:rgb(53,148,105);font-size:16px;font-weight:bold;';
-    let prefix = `%ceditor/inspector/components/class.js -- line: ${line}`;
+    let prefix = `%c class.js -- line: ${line}`;
 
     console.log(prefix, style, ...content);
 }
+
 
 exports.template = `
 <section></section>
@@ -134,6 +150,7 @@ exports.methods = {
             if (child.dump && child.dump.displayOrder > displayOrder) {
                 return child;
             }
+            return null;
         });
         if (child) {
             child.before(newChild);
@@ -141,29 +158,6 @@ exports.methods = {
             parent.appendChild(newChild);
         }
     },
-};
-
-/**
- * get property id
- * @param {string} type
- * @param {string} name
- * @param {string} path
- * @return {string}
- */
-exports.methods.getPropId = function(type, name, path) {
-    return `${type || name}:${path}`;
-};
-
-/**
- * compare func
- * @param {ComponentDump} a
- * @param {ComponentDump} b
- */
-exports.methods.displayOrderCompare = function(a, b) {
-    const aDisplayOrder = a.displayOrder === undefined ? Infinity : a.displayOrder;
-    const bDisplayOrder = b.displayOrder === undefined ? Infinity : b.displayOrder;
-    const res = aDisplayOrder - bDisplayOrder;
-    return Number.isNaN(res) ? 0 : res;
 };
 
 /**
@@ -198,6 +192,7 @@ async function update(dump) {
         // `ui-prop` component
         let $prop = $panel.$propList[id];
         if (!$prop) {
+            log(195, 'create');
             $prop = document.createElement('ui-prop');
             $prop.setAttribute('type', 'dump');
             $panel.$propList[id] = $prop;
@@ -224,8 +219,12 @@ async function update(dump) {
             } else {
                 $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
             }
-        } else if (!$prop.isConnected || !$prop.parentElement) {
-            $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
+        } else {
+            log(223, 'update');
+            if (!$prop.isConnected || !$prop.parentElement) {
+                log(225, `$prop is not connected or $prop has no parentElement`, $prop.isConnected, $prop.parentElement);
+                $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
+            }
         }
         $prop.render(info);
     }
@@ -234,64 +233,11 @@ async function update(dump) {
     // remove it from parentElement
     for (const id of oldPropList) {
         if (!newPropList.includes(id)) {
+            log(263, `propId: ${id} is not existed in newPropList`);
             const $prop = $panel.$propList[id];
             if ($prop && $prop.parentElement) {
                 $prop.parentElement.removeChild($prop);
             }
-        }
-    }
-}
-
-/**
- * update
- * @param {ComponentDump} dump
- * @return {Promise<void>}
- */
-async function update1(dump) {
-    const $panel = this;
-    const $section = $panel.$.section;
-
-    const oldPropList = Object.keys($panel.$propList);
-    const newPropList = [];
-
-    const { value } = dump;
-    const visiblePropList = Reflect.ownKeys(value)
-        .filter(key => value[key].visible)
-        .map(key => value[key])
-        .sort($panel.displayOrderCompare);
-
-    for (const prop of visiblePropList) {
-        // QUESTION: what is `dump.values`? what case
-        // `dump.values` reconstruct
-        // if (dump.values) {
-        //     prop.values = dump.values.map((value) => {
-        //         return value[key].value;
-        //     });
-        // }
-
-        const { type, name, path } = prop;
-        const propId = $panel.getPropId(type, name, path);
-
-        newPropList.push(propId);
-
-        let $prop = $panel.$propList[propId];
-
-        if (!$prop) {
-            $prop = document.createElement('ui-prop');
-            $prop.setAttribute('type', 'dump');
-            $prop.setAttribute('dump', prop.type);
-            if (prop.readonly) {
-                $prop.setAttribute('readonly', String(prop.readonly));
-            }
-            $panel.$propList[propId] = $prop;
-
-            if (prop.group && dump.groups) {
-                // append groups to panel
-                // renderGroups()
-            }
-
-        } else {
-            // TODO: update
         }
     }
 }
