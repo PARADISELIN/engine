@@ -353,9 +353,8 @@ function createPropGroup($panel, propGroup) {
     const $group = document.createElement('div');
     const $tabHeader = document.createElement('ui-tab');
 
-    $group.setAttribute('class', 'tab-group');
     $tabHeader.setAttribute('class', 'tab-header');
-
+    $group.setAttribute('class', 'tab-group');
     $group.appendChild($tabHeader);
 
     for (let i = 0; i < propGroup.length; i++) {

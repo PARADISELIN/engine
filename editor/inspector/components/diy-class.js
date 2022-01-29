@@ -115,12 +115,11 @@ exports.style = `
 
 /**
  * get property id
- * @param {string} type
- * @param {string} name
- * @param {string} path
+ * @param {PropDump} prop
  * @return {string}
  */
-function getPropId(type, name, path) {
+function generatePropId(prop) {
+    const { type, name, path } = prop;
     return `${type || name}:${path}`;
 }
 
@@ -224,21 +223,18 @@ async function update(dump) {
             });
         }
 
-        const { type, name, path } = prop;
-        const propId = getPropId(type, name, path);
-
+        const propId = generatePropId(prop);
         newPropList.push(propId);
 
         let $prop = $panel.$propList[propId];
 
-        // TODO: render core
         if (!$prop) {
             $prop = createPropElement($panel, propId, prop);
             $section.appendChild($prop);
+            // TODO: handler group
         } else {
             if (!$prop.isConnected || !$prop.parentElement) {
-                // TODO:
-                // update: find the nearest sibling node, then insert $prop by `index`
+                // TODO: find the nearest sibling node, then insert $prop by `index`
             }
         }
 
