@@ -350,6 +350,7 @@ function createArrayProp(prop) {
  * @return {HTMLElement}
  */
 function createPropGroup($panel, propGroup) {
+    // TODO: handle group
     const $group = document.createElement('div');
     const $tabHeader = document.createElement('ui-tab');
 

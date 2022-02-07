@@ -3,13 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const utils = require('./utils');
 
-function log(line, ...content) {
-    const style = 'color:rgb(53,148,105);font-size:16px;font-weight:bold;';
-    let prefix = `%c node.js -- line: ${line}`;
-
-    console.log(prefix, style, ...content);
-}
-
 exports.listeners = {
     async 'change-dump'(event) {
         const panel = this;
@@ -604,7 +597,7 @@ const Elements = {
             panel.$.nodeLayer.render(panel.dump.layer);
 
             // find a list of components that need to be rendered
-            // TODO: can be encapsulated [extractValidComponents]
+            // TODO: can be encapsulated [extractValidComponentList]
             const componentList = [];
             for (let i = 0; i < panel.dump.__comps__.length; i++) {
                 const comp = panel.dump.__comps__[i];
@@ -620,8 +613,6 @@ const Elements = {
                 }
             }
 
-            log(622, componentList);
-
             // `sectionBody` is used to render various components that wrapped with `ui-section`
             const sectionBody = panel.$.sectionBody;
             // `sectionBody.__sections__` is the collection of `ui-section` component
@@ -636,13 +627,13 @@ const Elements = {
                         (comp.mountedRoot === sectionBody.__sections__[i].dump?.mountedRoot);
                 });
 
-            // if the element length and type are the same, directly update the existing interface
             if (isAllSameType) {
+                // update UI directly
                 sectionBody.__sections__.forEach(($section, index) => {
                     const dump = componentList[index];
                     $section.dump = dump;
                     // 处理 ui-checkbox 涉及多选的情况
-                    // QUESTION: what does the comment on the line above mean?
+                    // QUESTION: ↑↑↑ what does the comment on the line above mean?
                     const $active = $section.querySelector('ui-checkbox');
                     $active.dump = dump.value.enabled;
                     $active.value = dump.value.enabled.value;
@@ -663,7 +654,7 @@ const Elements = {
                     });
                 });
             } else {
-                // repaint whole interface
+                // repaint whole UI
                 sectionBody.innerText = '';
                 sectionBody.__sections__ = [];
 
@@ -733,16 +724,17 @@ const Elements = {
                     // `renderList` is a list of render template file
                     let renderList = panel.renderMap.section[$section.__type__];
 
-                    // if no `render template`, use the default `cc.Class` template
                     if (!renderList || !renderList.length) {
                         if (Array.isArray(component.extends)) {
                             const parentClass = component.extends[0];
                             renderList = panel.renderMap.section[parentClass];
                         }
+                        // treat 'cc.Class' as default value
                         if (!renderList) {
                             renderList = panel.renderMap.section['cc.Class'];
                         }
                     }
+
                     renderList.forEach((file) => {
                         const $panel = document.createElement('ui-panel');
                         $panel.setAttribute('src', file);
@@ -756,7 +748,6 @@ const Elements = {
                         `);
 
                         $panel.shadowRoot.addEventListener('change-dump', (event) => {
-                            log(753, 'change-dump event called');
                             exports.listeners['change-dump'].call(panel, event);
                         });
 
@@ -1361,3 +1352,36 @@ exports.beforeClose = beforeClose;
 exports.config = {
     section: require('../components.js'),
 };
+
+// renderMap example:
+// {
+//   "header": {},
+//   "section": {
+//     "cc.Button": ["D:\\workspace\\engine\\editor\\inspector\\components\\button.js"],
+//     "cc.Label": ["D:\\workspace\\engine\\editor\\inspector\\components\\label.js"],
+//     "cc.Layout": ["D:\\workspace\\engine\\editor\\inspector\\components\\layout.js"],
+//     ...
+//   },
+//   "footer": {}
+// }
+
+// typeManager example:
+// {
+//   "node": "D:\\workspace\\engine\\editor\\inspector\\contributions\\node.js",
+//   "asset": "D:\\workspace\\engine\\editor\\inspector\\contributions\\asset.js"
+// }
+
+
+// renderManager
+// {
+//   asset: {
+//     header: { // ... },
+//     footer: { // ... }
+//     section: { // ... }
+//   },
+//   node: {
+//     header: { // ... },
+//     footer: { // ... }
+//     section: { // ... }
+//   }
+// }

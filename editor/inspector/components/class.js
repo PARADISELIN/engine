@@ -26,6 +26,8 @@
  * @property {number} [step]
  * @property {boolean} [slide]
  * @property {boolean} [isArray]
+ * @property {any[]} [values]
+ * @property {{name: string, value: any}} [enumList] - enum property symbol
  * @property {any} [elementTypeData]
  */
 
@@ -165,21 +167,22 @@ exports.methods = {
  * @param {ComponentDump} dump
  */
 async function update(dump) {
-    log(168, dump);
     const $panel = this;
     const $section = $panel.$.section;
     const oldPropList = Object.keys($panel.$propList);
     const newPropList = [];
 
     for (const key in dump.value) {
+        /** @type {PropDump} */
         const info = dump.value[key];
 
-        // do not render invisible properties
+        // only render visible properties
         if (!info.visible) {
             continue;
         }
 
-        // QUESTION: what is `dump.values`? what case
+        // QUESTION: what's `dump.values` meaning?
+        // QUESTION: In which case `dump` has `values` property?
         // `dump.values` reconstruct
         if (dump.values) {
             info.values = dump.values.map((value) => {
@@ -193,7 +196,6 @@ async function update(dump) {
         // `ui-prop` component
         let $prop = $panel.$propList[id];
         if (!$prop) {
-            log(195, 'create');
             $prop = document.createElement('ui-prop');
             $prop.setAttribute('type', 'dump');
             $panel.$propList[id] = $prop;
@@ -221,10 +223,9 @@ async function update(dump) {
                 $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
             }
         } else {
-            log(224, 'update');
             if (!$prop.isConnected || !$prop.parentElement) {
                 // case: updating an existing but deleted property
-                log(227, `$prop is not connected or $prop has no parentElement`, $prop.isConnected, $prop.parentElement);
+                log(228, `$prop is not connected or $prop has no parentElement`, $prop.isConnected, $prop.parentElement);
                 $panel.appendChildByDisplayOrder($section, $prop, info.displayOrder);
             }
         }
@@ -233,10 +234,10 @@ async function update(dump) {
 
     // if `id` is not existed in `newPropList`
     // remove it from `parentElement`
-    // case: remove an existing property in a custom script
+    // situation: remove an existing property in a custom script
     for (const id of oldPropList) {
         if (!newPropList.includes(id)) {
-            log(263, `propId: ${id} is not existed in newPropList`);
+            log(240, `propId: ${id} is not existed in newPropList`);
             const $prop = $panel.$propList[id];
             if ($prop && $prop.parentElement) {
                 $prop.parentElement.removeChild($prop);
